@@ -45,7 +45,13 @@ const requireAdmin = (req: Request, res: Response, next: any) => {
 const { Pool } = pkg;
 const app = express();
 
-app.use(cors());
+app.use(cors({
+  origin: [
+    "http://localhost:8080",
+    "https://furbito.iknacx.dev",
+  ],
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+}));
 app.use(express.json());
 
 const pool = new Pool({

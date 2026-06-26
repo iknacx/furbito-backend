@@ -236,6 +236,23 @@ app.post('/api/fields', authenticate, requireAdmin, async (req, res) => {
   }
 });
 
+// API DELETE para eliminar una cancha (Solo admin/dueño)
+app.delete('/api/fields/:id', authenticate, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const fieldId = req.params.id;
+    const result = await pool.query(`DELETE FROM fields WHERE id = $1 RETURNING id`, [fieldId]);
+    
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Field not found' });
+    }
+    
+    res.json({ message: 'Field deleted successfully', deletedId: fieldId });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to delete field' });
+  }
+});
+
 // --- HORARIOS (SCHEDULES) ---
 
 app.get('/api/fields/:id/schedules', async (req: Request, res: Response) => {

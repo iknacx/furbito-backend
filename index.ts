@@ -186,53 +186,26 @@ app.get('/api/fields', async (_, res) => {
   }
 });
 
+// API POST para crear canchas de futbol (SIN HORARIOS)
 app.post('/api/fields', authenticate, requireAdmin, async (req, res) => {
-  const client = await pool.connect();
   try {
-    await client.query('BEGIN'); // Iniciar transacción
+    const { 
+      name, location, latitude = -33.4489, longitude = -70.6693, 
+      surface, price, image, rating = 5.0, capacity 
+    } = req.body;
 
-    const { name, location, latitude, longitude, surface, price, image, rating, capacity } = req.body;
     const ownerId = req.user!.id;
 
-    // 1. Crear la cancha
-    const fieldResult = await client.query(`
+    const result = await pool.query(`
       INSERT INTO fields
       (owner_id, name, location, latitude, longitude, surface, price, image, rating, capacity)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *
     `, [ownerId, name, location, latitude, longitude, surface, price, image, rating, capacity]);
 
-    const fieldId = fieldResult.rows[0].id;
-
-    // 2. Generar horarios por defecto (Ej: Para los próximos 14 días)
-    const today = new Date();
-    
-    for (let i = 0; i < 14; i++) {
-      const currentDate = new Date(today);
-      currentDate.setDate(today.getDate() + i);
-      const dateString = currentDate.toISOString().split('T')[0];
-
-      for (const startStr of HOURS) {
-        // Calcular hora de término asumiendo bloques de 1 hora
-        const startHour = parseInt(startStr.split(':')[0], 10);
-        const endHour = startHour === 23 ? 0 : startHour + 1;
-        const endStr = `${endHour.toString().padStart(2, '0')}:00`;
-
-        await client.query(`
-          INSERT INTO schedules (field_id, date, start_time, end_time, price, status)
-          VALUES ($1, $2, $3, $4, $5, 'available')
-        `, [fieldId, dateString, startStr, endStr, null]); 
-        // price=null para que herede el de la cancha
-      }
-    }
-
-    await client.query('COMMIT'); // Confirmar transacción
-    res.status(201).json(fieldResult.rows[0]);
+    res.status(201).json(result.rows[0]);
   } catch (err) {
-    await client.query('ROLLBACK'); // Revertir todo si hay error
     console.error(err);
-    res.status(500).json({ error: 'Failed to create field and schedules' });
-  } finally {
-    client.release();
+    res.status(500).json({ error: 'Failed to create field' });
   }
 });
 

@@ -120,7 +120,7 @@ app.post('/api/login', async (req, res) => {
 app.patch('/api/users/me', authenticate, async (req: Request, res: Response) => {
   try {
     const userId = req.user!.id; 
-    const { name, email, phone } = req.body;
+    const { name, email, phone, password } = req.body;
 
     const updates: string[] = [];
     const values: any[] = [];
@@ -129,6 +129,12 @@ app.patch('/api/users/me', authenticate, async (req: Request, res: Response) => 
     if (name !== undefined) { updates.push(`name = $${paramIndex++}`); values.push(name); }
     if (email !== undefined) { updates.push(`email = $${paramIndex++}`); values.push(email); }
     if (phone !== undefined) { updates.push(`phone = $${paramIndex++}`); values.push(phone); }
+
+    if (password !== undefined && password.trim() !== '') {
+      const hash = await bcrypt.hash(password, 10);
+      updates.push(`hash = $${paramIndex++}`);
+      values.push(hash);
+    }
 
     if (updates.length === 0) return res.status(400).json({ error: 'No data provided to update' });
     values.push(userId);
